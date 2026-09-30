@@ -237,8 +237,10 @@ int main(int argc,char**argv){
  report:;
   long t=now_us();
   if(t-t_report>=60000000L){
-   fprintf(stderr,"presenter: %.1f frames/s shown, %ld%% of rows redrawn, render %ld us avg (scale %ld) %ld max, panel copy %ld us avg %ld max, %ld torn reads, vsync %s, %s\n",
-    renders*1e6/(t-t_report),renders?rows*100/(renders*L.LH):0,renders?r_sum/renders:0,renders?s_sum/renders:0,r_max,renders?c_sum/renders:0,c_max,retries,vsync_ok?"yes":"no",have_snap?"shim frames":"live polling");
+   /* SoC temperature: a Pi 5 without a fan starts throttling at 85 C, and then the firmware's own drawing saturates a core. */
+   int mc=0;{FILE *tz=fopen("/sys/class/thermal/thermal_zone0/temp","r");if(tz){if(fscanf(tz,"%d",&mc)!=1)mc=0;fclose(tz);}}
+   fprintf(stderr,"presenter: SoC %d C%s, %.1f frames/s shown, %ld%% of rows redrawn, render %ld us avg (scale %ld) %ld max, panel copy %ld us avg %ld max, %ld torn reads, vsync %s, %s\n",
+    mc/1000,mc>=84000?" (throttling: fit a fan)":"",renders*1e6/(t-t_report),renders?rows*100/(renders*L.LH):0,renders?r_sum/renders:0,renders?s_sum/renders:0,r_max,renders?c_sum/renders:0,c_max,retries,vsync_ok?"yes":"no",have_snap?"shim frames":"live polling");
    frames=renders=retries=r_sum=s_sum=r_max=c_sum=c_max=rows=0;t_report=t;}
  }
 }

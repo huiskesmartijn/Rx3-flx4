@@ -29,6 +29,23 @@
 - Old layout note: on the TD2 the firmware UI ended up 960x600 px in a 1152x720 picture. `--replay` (rx3-tap.py) and
   `--mouse` feed canvas coordinates directly, independent of the panel.
 
+## Start-up: controls dead, sticks late (2026-09-30)
+
+Boot probe (screen + SOURCE key every ~9 s + per-thread CPU), before -> after:
+- The FLX4 comes up wedged at power-on most boots (usb 3-2 enumerates with no Product string). rx3.service only
+  starts at ~12.7 s (network-online), then waited until wait=10 to cut USB_VBUS_EN, which also drops both sticks:
+  player 31 s -> 22 s. Now the first cut happens on the first iteration when uptime >= 10 s.
+- control-shim: the FIFO loop only started after engine wait + sleep(5) + routing + the 0x9000 key-name dump, ~9 s
+  after the player (41 s uptime); presses before that queued and replayed together, so SOURCE twice = open+close =
+  "nothing happened". Routing and the dump now run on a second thread: input live ~26 s uptime.
+- USB: "sleep 8" then serial attach with "sleep 2" each: sticks at 47/51 s -> 28.6/30.5 s. rx3-start.sh now waits
+  for "control adapter ready" in the player log and the firmware holding /proc/udev_usbctn2 open (a FIFO message
+  written with no reader is dropped), and usb-hotplug.sh skips the settle sleep (RX3_USB_SETTLED=1).
+- Once running, SOURCE -> screen change is 27-44 ms.
+- Heat: fanless pod, 82-86 C from boot (before the player starts), throttled 0xe0006, ARM at 1.5 GHz. In one boot
+  gui_task sat at 106 % on an idle deck screen; in the next, same screen and temperature, 40 %. Not caused by MIDI
+  input (30/s knob streams: no change). The presenter now logs the SoC temperature each minute.
+
 ## Display pipeline and latency (2026-09-17, perf branch)
 
 Measured first (Pi 5, FLX4, Touch Display 2, deck 1 playing):
