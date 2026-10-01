@@ -29,6 +29,32 @@
 - Old layout note: on the TD2 the firmware UI ended up 960x600 px in a 1152x720 picture. `--replay` (rx3-tap.py) and
   `--mouse` feed canvas coordinates directly, independent of the panel.
 
+## Button lights from the firmware (2026-10-01)
+
+- The firmware's panel LEDs normally go to two panel microcontrollers over SPI (/dev/subucom_spi1.0, 2.0 + _rdy3/4).
+  Here those are FIFOs nobody answers, so nothing is ever sent, but the state is still computed:
+  ui::PanelComController::timerCallback (0x2dd6a4, UiMain, every 20 ms) calls LedManager::refStates (0x33e2c8) on the
+  LedManager at PanelComController+88, then MainGpioLed::controGpio (writes /dev/gpiodrv) and sendPanelConData.
+- LedManager+48 is the published uif::LedStat: +4 u16 used, +8 Led[] (44 bytes each), +12 u16 ids (62), +14 u16
+  slots per id (2 = deck 1, deck 2), +16 u16 index[id*slots + deck-1] (0 = unlit, else 1-based Led). Led: +16 state
+  (1 lit, 2 blinking), +20 brightness (0 full, 1 dim), +28 blink period ms, +40..42 RGB. LedStat::update memsets and
+  refills fixed buffers (no realloc), so a reader can only see a blank table for a moment.
+- Ids (PcControlLedData::LedDefID2Text, table at 0x4de050): 1 Play, 2 Cue, 4 Sync, 5 Master, 7 LoopIn, 8 LoopOut,
+  9 Reloop, 11 Slip, 12 Quantize, 14 HotCue (pad mode; white = HOT CUE, e6ff00 = GATE CUE), 15 AutoBeatLoop,
+  17 BeatJump, 18-25 Pad1-8 (hot cue colour, dim = empty), 41-46 CFX, 48 FX on/off, 50 HeadphoneCue, 51 MasterCue.
+- control-shim.c finds the PanelComController by its vtable (0x4cfb10) in its own rw-p mappings, which it reads from
+  /hostproc/self/maps (a real procfs mounted by mount-rx3.sh; the chroot's /proc is the firmware's fake one), and
+  publishes ids 0-63 x 2 decks to /tmp/rx3-leds (header "RXL1", seq; 8 bytes each) when two reads agree.
+- controller-bridge.py drives the FLX4 from it: play 0x0B, cue 0x0C, beat sync 0x58, loop in/out 0x10/0x11,
+  headphone cue 0x54 per deck; pads 0x97/0x99 at the note base of the FLX4's pad layer (hot cue 0x00, beat loop
+  0x60, beat jump 0x20). FLX4 pads/buttons are single-colour on/off (Mixxx sends 0x7F/0x00 only).
+- The FLX4 pad layer follows the mode button the host lights: the old bridge sent HOT CUE/BEAT LOOP/BEAT JUMP straight
+  to the firmware as keys (toggling HOT CUE <-> GATE CUE each press) and never relit the mode buttons, so after PAD FX
+  or SAMPLER the pads stayed on 0x10/0x30 notes and did nothing. Mode presses now relight the buttons and press the
+  RX3 mode key only on evidence (another mode lit, or GATE CUE when HOT CUE is wanted): at start-up the firmware's
+  mode lights are blank for a moment, and reading that as "not in HOT CUE" toggled both decks into GATE CUE.
+- Still unmapped: the FLX4 MASTER CUE button's note (firmware key 0x4407, LED id 51).
+
 ## Start-up: controls dead, sticks late (2026-09-30)
 
 Boot probe (screen + SOURCE key every ~9 s + per-thread CPU), before -> after:

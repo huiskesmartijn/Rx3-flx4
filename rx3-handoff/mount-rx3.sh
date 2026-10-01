@@ -14,6 +14,9 @@ if ! mountpoint -q $R/dev/fb0; then
   [ -f $R/dev/fb0 ] || : > $R/dev/fb0
   mount --bind /run/rx3-fb0 $R/dev/fb0
 fi
+# A real procfs for the player shim's own use (control-shim.c reads its memory map to find the firmware's LED state).
+# The chroot's /proc stays the firmware's fake one (mounts table, udev FIFOs).
+mkdir -p $R/hostproc; mountpoint -q $R/hostproc || mount -t proc proc $R/hostproc
 mountpoint -q $R/tmp || mount -t tmpfs -o size=256m,mode=1777,uid=$RX3_UID,gid=$RX3_UID tmpfs $R/tmp
 echo "1.19" > $R/tmp/smdj.rev; echo "1.19 [1.19:1.19]" > $R/tmp/smdj2.rev; chown $RX3_UID:$RX3_UID $R/tmp/*.rev
 echo mounts-ok
