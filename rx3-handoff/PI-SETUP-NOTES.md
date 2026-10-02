@@ -53,7 +53,17 @@
   or SAMPLER the pads stayed on 0x10/0x30 notes and did nothing. Mode presses now relight the buttons and press the
   RX3 mode key only on evidence (another mode lit, or GATE CUE when HOT CUE is wanted): at start-up the firmware's
   mode lights are blank for a moment, and reading that as "not in HOT CUE" toggled both decks into GATE CUE.
-- Still unmapped: the FLX4 MASTER CUE button's note (firmware key 0x4407, LED id 51).
+- FLX4 mixer channel (0x96): MASTER CUE is note 0x63 (the bridge had it as SMART CFX), SMART CFX is note 0x00.
+  MASTER CUE -> firmware key 0x4407 (channel 0), LED id 51 slot 0 -> 0x96 0x63. SMART CFX steps the colour FX.
+- VU meters: DjEngineIF::getInputChLevelMono(EnMixerInput) (0x50170, `this` unused, engine 0x11493c0) returns the
+  channel level in dB (INT_MIN = silence): InputChannel+88 holds the L/R peak, matched against
+  LevelMeter::THRESHOLDS_. The shim appends both channels' levels (int32) after the LED table; the bridge turns them
+  into the RX3's own meter steps (MonoLvMeter::calcLedValue's table 0x4ce780: 0 below -24 dB, ~3 dB a step, 11 above
+  +14 dB) and sends step*127/11 on CC 0x02 of 0xB0/0xB1 (Mixxx sends vu_meter*127 there).
+- 2026-10-02, once: JuceALSA spun in a SIGSEGV loop in playengine::BeatSync::checkPrecision (0x7c404, [[sp+12]+4]
+  is null, +0x24 read; the firmware's handler returns to the faulting instruction), ~32 000 faults/s, all audio gone
+  until restart. Not reproduced in four attempts (incl. faders/trims/master cue/hot cues, 12-round soak). The shim
+  now logs "audio thread has stopped writing" when writes stop for 3 s.
 
 ## Start-up: controls dead, sticks late (2026-09-30)
 
