@@ -23,7 +23,7 @@ an edge-swipe overlay and/or FLX4 SHIFT combinations.
 
 ## OS
 
-Fresh **Raspberry Pi OS (64-bit)**, flashed with Raspberry Pi Imager (hostname, user, Wi-Fi and SSH
+Fresh **Raspberry Pi OS (64-bit)**, hostname `FLX4PI` (`ssh <user>@flx4pi.local`), flashed with Raspberry Pi Imager (user, Wi-Fi and SSH
 set in Imager). The SD card Waveshare shipped held a stock Raspberry Pi OS desktop image of
 2026-06-18 with their display lines added; it is fine as a hardware test but not used for the build.
 
