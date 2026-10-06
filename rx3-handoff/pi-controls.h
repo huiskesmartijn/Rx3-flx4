@@ -11,6 +11,7 @@
 #endif
 #define UI_STATE RX3_ROOT_PATH "/dev/rx3-ui-state"
 #define UI_CONTROL RX3_ROOT_PATH "/dev/rx3-control"
+#define PRIV_FIFO RX3_ROOT_PATH "/dev/rx3-priv"   /* root helper (rx3-priv.sh): the touch bridge asks it to stop the player */
 #define FW_W 1280
 #define FW_H 800
 struct command {int key,operation,channel,value;float analog;int extra;};
@@ -19,7 +20,7 @@ struct ui_state {unsigned magic;float level[6];unsigned pressed;unsigned headpho
 struct button {const char *label,*sub;int key,channel;unsigned color;};
 #define NBUTTONS 4
 static const struct button buttons[NBUTTONS]={
- {"SOURCE",0,0x201,0,0x08699c},{"BROWSE","hold: shortcuts",0x202,0,0x08699c},
+ {"SOURCE","hold 5 s: exit",0x201,0,0x08699c},{"BROWSE","hold: shortcuts",0x202,0,0x08699c},
  {"USB STOP 1","hold 2 s",0x8002,1,0x7a2f2f},{"USB STOP 2","hold 2 s",0x8002,2,0x7a2f2f}
 };
 /* Logical canvas = the panel seen upright (LW x LH): rotation 0/180 keep W x H, 90/270 swap them.

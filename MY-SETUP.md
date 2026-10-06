@@ -81,3 +81,5 @@ Not with `sudo` for the clone: the files must belong to the login user.
   prerequisites ok, so no `rx3.conf` needed.
 - 2026-10-06: player running on the panel, but sliding through the track list was not smooth. Merged
   upstream `perf` (completed-frame presenter). Apply on the Pi with `git pull && ./install.sh && sudo reboot`.
+- 2026-10-06: added hold SOURCE 5 s on the touchscreen to exit the player (no keyboard needed).
+  Apply on the Pi with `git pull && ./install.sh && sudo reboot`.

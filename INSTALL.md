@@ -121,6 +121,10 @@ appears on the display. A USB mouse works as a pointer until you attach a touchs
 - **Hold BROWSE for 2 s** to open the firmware's SHORTCUT settings screen (LCD and jog brightness, vinyl speed
   adjust, waveform colour, quantize value, headphone mono split, fader curve ...), which had no way in before.
   A shorter tap is the plain BROWSE key.
+- **Hold SOURCE for 5 s** to stop the player and get the text console back, the same as holding ESC on a keyboard
+  (see Debug tools). A shorter tap is the plain SOURCE key. The touch bridge runs unprivileged, so it asks the root
+  helper `rx3-priv.sh` to run `systemctl stop rx3`. To start the player again without a keyboard, reboot (on a
+  Pi 5, press the power button once to shut down and again to start).
 - A USB mouse still works as a pointer, and `rx3-tap.py` now takes firmware coordinates (1280x800).
 
 Knobs for `rx3.conf`, on top of `RX3_FB` / `RX3_ROTATE`:
@@ -151,6 +155,7 @@ watcher does, and it keeps running even when the player is stopped:
 |---|---|
 | **ESC held for 1 s** | Stop the player (`systemctl stop rx3`). The screen is cleared and the text console comes back. |
 | **Ctrl+C** | The same, immediately. |
+| *(no keyboard)* | Hold the on-screen **SOURCE** button for 5 s: the same as ESC. |
 | **F5** | Restart the player. |
 | **F12** | Write a diagnostic snapshot to `~/rx3-diag-<date>.txt`: journal, processes, mounts, sound cards, USB, throttling, and the tails of every rx3 log. Attach that file when reporting a hang. |
 
