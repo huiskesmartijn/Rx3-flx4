@@ -83,3 +83,7 @@ Not with `sudo` for the clone: the files must belong to the login user.
   upstream `perf` (completed-frame presenter). Apply on the Pi with `git pull && ./install.sh && sudo reboot`.
 - 2026-10-06: added hold SOURCE 5 s on the touchscreen to exit the player (no keyboard needed).
   Apply on the Pi with `git pull && ./install.sh && sudo reboot`.
+- 2026-10-06: choppy list scrolling diagnosed. Panel (Goodix, polled by the kernel, no IRQ) reports a drag at
+  ~54/s with 1 px steps; a faster poll (8 ms) did not raise that, so it is not kept. A perfectly smooth drag
+  injected with `rx3-drag.py` also moves the RX3 list in whole rows: row-wise scrolling is the firmware's own.
+  Felt a bit slow; the FLX4 browse knob is the quick way through a list.
