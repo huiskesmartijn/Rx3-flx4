@@ -18,6 +18,10 @@ This branch (`claude/eloquent-rubin-guv4dm`) starts from upstream's `7inch` bran
 1152x720 with bilinear scaling and a 128 px sidebar of four buttons (SOURCE, BROWSE, USB STOP 1/2).
 `main` would shrink it to about 1066x666 to fit on-screen faders the FLX4 makes redundant.
 
+It also carries upstream's `perf` branch (merged 2026-10-06): the presenter waits for the firmware to
+finish each frame, redraws only the rows that changed, and uses NEON, so lists scroll smoothly instead of
+showing ~35 torn frames a second.
+
 Planned later: a full-screen 1280x800 mode (firmware at 1:1) with the four sidebar buttons moved to
 an edge-swipe overlay and/or FLX4 SHIFT combinations.
 
@@ -75,3 +79,5 @@ Not with `sudo` for the clone: the files must belong to the login user.
 - 2026-10-06: Pi booted with desktop and touch working. User `raspberry`. Firmware recovered and extracted.
   `install.sh doctor`: display `/dev/fb0 (drm-rp1-dsidrmf, 1280x800 px)` picked automatically, all
   prerequisites ok, so no `rx3.conf` needed.
+- 2026-10-06: player running on the panel, but sliding through the track list was not smooth. Merged
+  upstream `perf` (completed-frame presenter). Apply on the Pi with `git pull && ./install.sh && sudo reboot`.

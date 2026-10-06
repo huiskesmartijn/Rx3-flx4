@@ -29,6 +29,88 @@
 - Old layout note: on the TD2 the firmware UI ended up 960x600 px in a 1152x720 picture. `--replay` (rx3-tap.py) and
   `--mouse` feed canvas coordinates directly, independent of the panel.
 
+## Button lights from the firmware (2026-10-01)
+
+- The firmware's panel LEDs normally go to two panel microcontrollers over SPI (/dev/subucom_spi1.0, 2.0 + _rdy3/4).
+  Here those are FIFOs nobody answers, so nothing is ever sent, but the state is still computed:
+  ui::PanelComController::timerCallback (0x2dd6a4, UiMain, every 20 ms) calls LedManager::refStates (0x33e2c8) on the
+  LedManager at PanelComController+88, then MainGpioLed::controGpio (writes /dev/gpiodrv) and sendPanelConData.
+- LedManager+48 is the published uif::LedStat: +4 u16 used, +8 Led[] (44 bytes each), +12 u16 ids (62), +14 u16
+  slots per id (2 = deck 1, deck 2), +16 u16 index[id*slots + deck-1] (0 = unlit, else 1-based Led). Led: +16 state
+  (1 lit, 2 blinking), +20 brightness (0 full, 1 dim), +28 blink period ms, +40..42 RGB. LedStat::update memsets and
+  refills fixed buffers (no realloc), so a reader can only see a blank table for a moment.
+- Ids (PcControlLedData::LedDefID2Text, table at 0x4de050): 1 Play, 2 Cue, 4 Sync, 5 Master, 7 LoopIn, 8 LoopOut,
+  9 Reloop, 11 Slip, 12 Quantize, 14 HotCue (pad mode; white = HOT CUE, e6ff00 = GATE CUE), 15 AutoBeatLoop,
+  17 BeatJump, 18-25 Pad1-8 (hot cue colour, dim = empty), 41-46 CFX, 48 FX on/off, 50 HeadphoneCue, 51 MasterCue.
+- control-shim.c finds the PanelComController by its vtable (0x4cfb10) in its own rw-p mappings, which it reads from
+  /hostproc/self/maps (a real procfs mounted by mount-rx3.sh; the chroot's /proc is the firmware's fake one), and
+  publishes ids 0-63 x 2 decks to /tmp/rx3-leds (header "RXL1", seq; 8 bytes each) when two reads agree.
+- controller-bridge.py drives the FLX4 from it: play 0x0B, cue 0x0C, beat sync 0x58, loop in/out 0x10/0x11,
+  headphone cue 0x54 per deck; pads 0x97/0x99 at the note base of the FLX4's pad layer (hot cue 0x00, beat loop
+  0x60, beat jump 0x20). FLX4 pads/buttons are single-colour on/off (Mixxx sends 0x7F/0x00 only).
+- The FLX4 pad layer follows the mode button the host lights: the old bridge sent HOT CUE/BEAT LOOP/BEAT JUMP straight
+  to the firmware as keys (toggling HOT CUE <-> GATE CUE each press) and never relit the mode buttons, so after PAD FX
+  or SAMPLER the pads stayed on 0x10/0x30 notes and did nothing. Mode presses now relight the buttons and press the
+  RX3 mode key only on evidence (another mode lit, or GATE CUE when HOT CUE is wanted): at start-up the firmware's
+  mode lights are blank for a moment, and reading that as "not in HOT CUE" toggled both decks into GATE CUE.
+- FLX4 mixer channel (0x96): MASTER CUE is note 0x63 (the bridge had it as SMART CFX), SMART CFX is note 0x00.
+  MASTER CUE -> firmware key 0x4407 (channel 0), LED id 51 slot 0 -> 0x96 0x63. SMART CFX steps the colour FX.
+- VU meters: DjEngineIF::getInputChLevelMono(EnMixerInput) (0x50170, `this` unused, engine 0x11493c0) returns the
+  channel level in dB (INT_MIN = silence): InputChannel+88 holds the L/R peak, matched against
+  LevelMeter::THRESHOLDS_. The shim appends both channels' levels (int32) after the LED table; the bridge turns them
+  into the RX3's own meter steps (MonoLvMeter::calcLedValue's table 0x4ce780: 0 below -24 dB, ~3 dB a step, 11 above
+  +14 dB) and sends step*127/11 on CC 0x02 of 0xB0/0xB1 (Mixxx sends vu_meter*127 there).
+- 2026-10-02, once: JuceALSA spun in a SIGSEGV loop in playengine::BeatSync::checkPrecision (0x7c404, [[sp+12]+4]
+  is null, +0x24 read; the firmware's handler returns to the faulting instruction), ~32 000 faults/s, all audio gone
+  until restart. Not reproduced in four attempts (incl. faders/trims/master cue/hot cues, 12-round soak). The shim
+  now logs "audio thread has stopped writing" when writes stop for 3 s.
+
+## Start-up: controls dead, sticks late (2026-09-30)
+
+Boot probe (screen + SOURCE key every ~9 s + per-thread CPU), before -> after:
+- The FLX4 comes up wedged at power-on most boots (usb 3-2 enumerates with no Product string). rx3.service only
+  starts at ~12.7 s (network-online), then waited until wait=10 to cut USB_VBUS_EN, which also drops both sticks:
+  player 31 s -> 22 s. Now the first cut happens on the first iteration when uptime >= 10 s.
+- control-shim: the FIFO loop only started after engine wait + sleep(5) + routing + the 0x9000 key-name dump, ~9 s
+  after the player (41 s uptime); presses before that queued and replayed together, so SOURCE twice = open+close =
+  "nothing happened". Routing and the dump now run on a second thread: input live ~26 s uptime.
+- USB: "sleep 8" then serial attach with "sleep 2" each: sticks at 47/51 s -> 28.6/30.5 s. rx3-start.sh now waits
+  for "control adapter ready" in the player log and the firmware holding /proc/udev_usbctn2 open (a FIFO message
+  written with no reader is dropped), and usb-hotplug.sh skips the settle sleep (RX3_USB_SETTLED=1).
+- Once running, SOURCE -> screen change is 27-44 ms.
+- Heat: fanless pod, 82-86 C from boot (before the player starts), throttled 0xe0006, ARM at 1.5 GHz. In one boot
+  gui_task sat at 106 % on an idle deck screen; in the next, same screen and temperature, 40 %. Not caused by MIDI
+  input (30/s knob streams: no change). The presenter now logs the SoC temperature each minute.
+
+## Display pipeline and latency (2026-09-17, perf branch)
+
+Measured first (Pi 5, FLX4, Touch Display 2, deck 1 playing):
+- The firmware's gui_task draws straight into its mmap of the fb file at a steady 17.05 ms (58.6 Hz, its own timer)
+  and calls FBIO_WAITFORVSYNC once per frame *after* drawing; never FBIOPAN_DISPLAY. It costs 60-70 % of a core on
+  the deck screen whatever we do (20 % on the library screen).
+- The old presenter sampled the live picture at 60 Hz and took ~20 ms per frame (bilinear sample per rotated
+  pixel: every output pixel touched a new cache line of the 4 MB source), so it ran at 70 % of a core, showed
+  ~35 frames/s, and every frame straddled one or two firmware draws: the tear/shimmer on the zoomed waveform.
+- Hot cue: FIFO command -> first non-silent write = 1.4-5 ms (control-shim -> engine). Output buffer is what the
+  firmware asks for: 44100 Hz, period 128, 2 periods (5.8 ms) into the dmix slave (buffer 512). The track streams
+  from the stick through fuse-overlayfs (one read per ~240 ms; a jump = one seek + 4 reads inside ~9 ms). So the
+  audible lag is ~15-20 ms end to end and the visible lag was the display.
+- Thermal: no fan in the pod; at 70 % + 70 % of two cores the SoC sat at 85 °C with the soft limit active
+  (throttled 0xe0006, clock 2.0-2.1 GHz), which slows everything further. Dropped to ~50 °C idle / ~70 °C playing
+  once the presenter was fixed. The "performance" governor was tried and reverted (more idle heat, no measured gain).
+- The fb file lived on the SD card: its 4 MB of dirty pages were written back every 30 s (~11 GB/day).
+
+What changed:
+- fb-frame.h: the chroot's /dev/fb0 file is 2 x 4 MB + a page (mount-rx3.sh binds /run/rx3-fb0, tmpfs). On
+  FBIO_WAITFORVSYNC the shim copies the finished frame into the second half under a seqlock word (odd while
+  copying) and FUTEX_WAKEs it; avg 1.0 ms, max 2.1 ms in gui_task. The shim build needs -march=armv7-a for dmb.
+- fb-present.c: waits on the futex, hashes each source row (NEON FNV per lane) to find changed rows, scales only
+  those (vertical blend auto-vectorised, horizontal pass NEON lane gathers, weights per quad), restores the chrome
+  and cursor on those rows, rotates only the 32-row bands that changed (NEON 4x4 transposes, reversed lanes for
+  rotate 90), then copies the back buffer to the panel after the vertical blank. Pixel-identical to the scalar
+  build (-DRX3_NO_NEON). A frame with nothing changed costs the 4 MB hash (~1.2 ms); the panel copy is ~0.8 ms.
+- Wi-Fi: ssh sessions to the Pi stall every few minutes (5 GHz, -70 dBm); long jobs run detached with systemd-run.
+
 ## Screens, BROWSE and the shortcut menu (2026-09-17)
 
 - BROWSE (0x202): library -> deck; from any other screen (deck, source, shortcut) -> library, at the last
