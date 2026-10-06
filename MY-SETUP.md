@@ -29,18 +29,22 @@ set in Imager). The SD card Waveshare shipped held a stock Raspberry Pi OS deskt
 
 ## config.txt
 
-Appended to `/boot/firmware/config.txt` (taken from Waveshare's own card):
+Appended to `/boot/firmware/config.txt`: the `[pi5]` block from Waveshare's own card, which matches
+the two lines in the panel's printed manual:
 
 ```
 [pi5]
 dtoverlay=nospi10
+dtoverlay=ov5647
 dtoverlay=vc4-kms-dsi-waveshare-panel,10_1_inch,dsi0
 [all]
 ```
 
 - The ribbon goes in the Pi 5 connector marked **0** (CAM/DISP 0), because of `,dsi0`.
   For connector 1, drop `,dsi0`.
-- Waveshare's card also had `dtoverlay=ov5647` (a camera) and `enable_uart=1`; neither is needed.
+- `ov5647` is the Pi Camera v1 sensor driver. Waveshare's manual includes it with this panel, so it is
+  kept; without a camera it only logs that none was found. `nospi10` came from the card, not the manual.
+- Waveshare's card also had `enable_uart=1`; not needed.
 - The panel must be connected at boot; the framebuffer is not created on hotplug.
 
 ## Install, on the Pi
