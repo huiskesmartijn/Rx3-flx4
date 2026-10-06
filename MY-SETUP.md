@@ -72,3 +72,6 @@ Not with `sudo` for the clone: the files must belong to the login user.
 ## Log
 
 - 2026-10-06: panel identified, branch created from `7inch`, OS choice and config.txt lines recorded.
+- 2026-10-06: Pi booted with desktop and touch working. User `raspberry`. Firmware recovered and extracted.
+  `install.sh doctor`: display `/dev/fb0 (drm-rp1-dsidrmf, 1280x800 px)` picked automatically, all
+  prerequisites ok, so no `rx3.conf` needed.
