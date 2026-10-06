@@ -53,18 +53,21 @@ dtoverlay=vc4-kms-dsi-waveshare-panel,10_1_inch,dsi0
 
 ## Install, on the Pi
 
+On a freshly flashed card (Raspberry Pi OS 64-bit, SSH on), everything in one go:
+
 ```bash
+sudo apt install -y git
 git clone -b claude/eloquent-rubin-guv4dm https://github.com/huiskesmartijn/Rx3-flx4.git
-cd Rx3-flx4/rx3-handoff && chmod +x *.sh
-./install.sh deps
-python3 recover-firmware.py && python3 extract_cramfs.py
-./install.sh doctor
-./build-rootfs.sh
-./install.sh
-sudo systemctl enable --now rx3
+cd Rx3-flx4/rx3-handoff && ./setup.sh --display waveshare-10.1-dsi
 ```
 
-Not with `sudo` for the clone: the files must belong to the login user.
+It adds the panel's `config.txt` lines, installs the packages, downloads and unpacks the firmware, builds the
+chroot, installs the host side, enables the player at boot, and offers to reboot. Not with `sudo`: the files
+must belong to the login user. The `config.txt` lines can also be added on the laptop before the first boot
+(see above); the script sees them and leaves them alone.
+
+After a `git pull`, run `./setup.sh` again: it skips what is done, rebuilds the host side and restarts the
+player. `./setup.sh --rebuild` also rebuilds the chroot, which resets the player's own settings.
 
 ## Things to check on first run
 
@@ -87,3 +90,4 @@ Not with `sudo` for the clone: the files must belong to the login user.
   ~54/s with 1 px steps; a faster poll (8 ms) did not raise that, so it is not kept. A perfectly smooth drag
   injected with `rx3-drag.py` also moves the RX3 list in whole rows: row-wise scrolling is the firmware's own.
   Felt a bit slow; the FLX4 browse knob is the quick way through a list.
+- 2026-10-06: added `setup.sh` for a one-command install (sandbox-tested with stubs, not yet on the Pi).

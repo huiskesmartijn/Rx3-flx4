@@ -9,6 +9,18 @@ particular username: the scripts work out where they live and which account owns
 > `git fetch origin && git reset --hard origin/$(git branch --show-current)`, or re-clone. Nothing you have
 > built or installed is affected.
 
+## In one command
+
+`setup.sh` runs steps 1 to 6 below in order, skipping what is already done, and offers to reboot at the end:
+
+```bash
+cd Rx3-flx4/rx3-handoff && ./setup.sh
+```
+
+`--display waveshare-10.1-dsi` also adds that panel's lines to `config.txt`; `--rebuild` rebuilds the chroot
+even if it exists (which resets the player's own settings); `--reboot` reboots without asking. After a
+`git pull`, run it again to rebuild and reinstall. The steps below are what it does, for when one fails.
+
 ## 1. Get the files and the packages
 
 ```bash
