@@ -77,6 +77,28 @@ player. `./setup.sh --rebuild` also rebuilds the chroot, which resets the player
 - Rotation should be 0 (landscape panel). If upside down: `RX3_ROTATE=180` in `rx3.conf`.
 - Touch should be picked up automatically as the pointer (`~/rx3-touch.log` shows the ranges).
 
+## Cover art
+
+Track artwork does not show in the player. To find out why, with the player running and the stick in:
+
+```bash
+ls ~/rx3-usb/usb1/lower/PIONEER/
+find ~/rx3-usb/usb1/lower/PIONEER/Artwork -type f | head -3
+find ~/rx3-usb/usb1/lower/PIONEER/Artwork -type f | wc -l
+ls ~/rx3-rootfs/usr/lib/directfb-1.4-0/interfaces/IDirectFBImageProvider/
+grep -i -E "jpe?g|artwork|image" ~/rx3-player.log | tail -20
+sudo apt install -y strace
+sudo timeout 30 strace -f -e trace=file -p $(pgrep -x rbp-pi) -o ~/art.trace   # load a track with art meanwhile
+grep -i -E "artwork|\.jpe?g" ~/art.trace | head -20
+```
+
+No artwork lines in the trace: the firmware never asks. `ENOENT`: a path problem in the USB overlay.
+Opened fine: a decoding problem.
+
+## To do
+
+Kept in [`CLAUDE.md`](CLAUDE.md), which Claude Code reads at the start of every session.
+
 ## Log
 
 - 2026-10-06: panel identified, branch created from `7inch`, OS choice and config.txt lines recorded.
