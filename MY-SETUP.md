@@ -56,8 +56,9 @@ dtoverlay=vc4-kms-dsi-waveshare-panel,10_1_inch,dsi0
 On a freshly flashed card (Raspberry Pi OS 64-bit, SSH on), everything in one go:
 
 ```bash
-sudo apt install -y git
-git clone -b claude/eloquent-rubin-guv4dm https://github.com/huiskesmartijn/Rx3-flx4.git
+sudo apt install -y git gh
+gh auth login            # the repository is private: GitHub.com, HTTPS, log in with the browser code
+git clone -b claude/eloquent-rubin-guv4dm https://github.com/huiskesmartijn/rx3-flx4-private.git Rx3-flx4
 cd Rx3-flx4/rx3-handoff && ./setup.sh --display waveshare-10.1-dsi
 ```
 
@@ -91,3 +92,6 @@ player. `./setup.sh --rebuild` also rebuilds the chroot, which resets the player
   injected with `rx3-drag.py` also moves the RX3 list in whole rows: row-wise scrolling is the firmware's own.
   Felt a bit slow; the FLX4 browse knob is the quick way through a list.
 - 2026-10-06: added `setup.sh` for a one-command install (sandbox-tested with stubs, not yet on the Pi).
+- 2026-10-07: moved to the private repository `huiskesmartijn/rx3-flx4-private` (GitHub does not allow a
+  public fork to be made private). Same branches and commits as the fork. On an existing Pi:
+  `gh auth login`, then `git remote set-url origin https://github.com/huiskesmartijn/rx3-flx4-private.git`.
